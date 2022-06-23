@@ -22,14 +22,20 @@ public class Main {
     */    
         repo.getProductsAndPrint(3); 
         
-        Map<String, Integer> order = new HashMap<>();
-        order.put("3251615", 2);
-        order.put("3251620", 4);
-        order.put("3251619", 4);
+        System.out.println();
+    /*
+        Набираем товар в корзину и делаем заказ.
+    */    
+        Map<String, Integer> shoppingСart = new HashMap<>();
         
-        repo.newOrder("Dmitry", "559-60-21", "dmitry@dtp.spb.ru", "Saint-Petersburg", order);
+        shoppingСart.put("3251615", 2);
+        shoppingСart.put("3251617", 3);
+        shoppingСart.put("3251619", 4);
+        
+    //регистрируем новый заказ.    
+        repo.newOrder("Брежнев Леонид Ильич", "100-00-00", "ilyich@kpss-rulit.su", "Москва, Красная площадь, Кремль", shoppingСart);
 
-        
+  
     }
     
 }
