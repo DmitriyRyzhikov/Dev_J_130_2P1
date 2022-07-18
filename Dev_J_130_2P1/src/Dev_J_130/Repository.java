@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -99,7 +98,7 @@ public class Repository {
         
            try(Connection con = DriverManager.getConnection("jdbc:derby://localhost:1527/myDB", "Pronard", "Pronard20");
                 Statement stm = con.createStatement()){
-               ResultSet rs = stm.executeQuery("SELECT order_cod, product_name, product_color FROM  products INNER JOIN order_positions ON order_cod=" 
+                ResultSet rs = stm.executeQuery("SELECT order_cod, product_name, product_color FROM  products INNER JOIN order_positions ON order_cod=" 
                                                 + id + "AND  article=product_article");
                 while(rs.next()){
                       order_cod = rs.getInt(1);
@@ -125,35 +124,58 @@ o адрес эл. почты;
 o адрес доставки;
 o артикулы товаров, включённых в заказ;
 o количество товара для каждой позиции заказа.
+    Последний параметр имитирует корзину покупателя. В одном заказе покупатель может выбрать как одну товарную позицию, 
+  так и несколько. По сути, это количество ограничено только ассортиментом магазина и желанием покупателя. В связи с этим
+  в качестве корзины используется Map с парой артикул - количество. Таким образом к одному заказу  можно привязать любое
+  количество таких пар, а использование артикула в качестве ключа исключает дублирование одного и того же товара в одном 
+  заказе.  
 */
-    public void newOrder(String сustomer_name, String сustomer_phone, String сustomer_email, String shipment_address, Map<String, Integer> goodsToByu){
-          //int res = 0;
-          String sql = "INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    public void newOrder(String сustomer_name, String сustomer_phone, String сustomer_email, 
+                         String shipment_address, Map<String, Integer> shoppingСart)   {
+        
+        int newOrderNumber = lastOrderNumber() + 1;
+        String sqlFirst = "INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlSecond = "INSERT INTO order_positions VALUES (?, ?, ?, ?)";
                     
-        try (Connection con = DriverManager.getConnection("jdbc:derby://localhost:1527/myDB", "Pronard", "Pronard20");
-                PreparedStatement ps = con.prepareStatement(sql)){
-            
-            ps.setInt(1, lastOrderNumber() + 1);
-            ps.setDate(2, Date.valueOf(LocalDate.now()));
-            ps.setString(3, сustomer_name);
-            ps.setString(4, сustomer_phone);
-            ps.setString(5, сustomer_email);
-            ps.setString(6, shipment_address);
-            ps.setString(7, "P");
-            ps.setDate(8, null);
-            ps.executeUpdate();  
-            
-        }catch(SQLException se){
+        try (Connection conA = DriverManager.getConnection("jdbc:derby://localhost:1527/myDB", "Pronard", "Pronard20");
+            PreparedStatement psA = conA.prepareStatement(sqlFirst))
+            {
+            psA.setInt(1, newOrderNumber);
+            psA.setDate(2, Date.valueOf(LocalDate.now()));
+            psA.setString(3, сustomer_name);
+            psA.setString(4, сustomer_phone);
+            psA.setString(5, сustomer_email);
+            psA.setString(6, shipment_address);
+            psA.setString(7, "P");
+            psA.setDate(8, null);
+            psA.executeUpdate();  
+            }
+        catch(SQLException se){
             System.out.println("Произошла какая-то ошибка");
         }
+            shoppingСart.forEach((x, y) -> {
+                try (Connection conB = DriverManager.getConnection("jdbc:derby://localhost:1527/myDB", "Pronard", "Pronard20");
+                     PreparedStatement psB = conB.prepareStatement(sqlSecond))
+                    {
+                    psB.setInt(1, newOrderNumber);
+                    psB.setString(2, x);
+                    psB.setInt(3, getPrice("'"+x+"'")); 
+                    psB.setInt(4, y);
+
+                    psB.executeUpdate();  
+                }
+                catch(SQLException se){
+                    System.out.println("Произошла какая-то ошибка");
+                }
+          }); 
+        System.out.println("Заказ № " + newOrderNumber + " успешно размещен.");    
     }
     
-/*
-    Метод получает массив номеров существующих заказов из таблицы orders, 
+   /*
+    Метод получает список номеров существующих заказов из таблицы orders, 
     сортирует их по возрастанию и возвращает максимальный номер. Этот номер 
     считается последним использованным номером для нумерации заказов. 
-    При регистрации нового заказа, ему присваивается этот номер + 1.
-    
+    При регистрации нового заказа, заказу присваивается этот номер + 1.   
     */    
     public int lastOrderNumber(){
            List<Orders> ordersList = getOrdersList();
@@ -162,5 +184,24 @@ o количество товара для каждой позиции зака�
            Collections.sort(orderNumbers);
         return orderNumbers.get(orderNumbers.size()-1);
     }
+    
+   /*
+    Метод возвращает цену товара по его артикулу. Эти данные нужны при регистрации
+    нового заказа.
+    */
+    
+    public int getPrice(String article){
+        int price = 0;
+        try(Connection con = DriverManager.getConnection("jdbc:derby://localhost:1527/myDB", "Pronard", "Pronard20");
+                Statement stm = con.createStatement()){
+               ResultSet rs = stm.executeQuery("SELECT product_price FROM products WHERE article = "+ article);
+                while(rs.next()){                    
+                     price = rs.getInt(1);
+                      }
+                }
+            catch(SQLException se){
+                  System.out.println("Произошла какая-то ошибка"); }
+        return price;
+    }    
     
 }

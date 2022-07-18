@@ -9,7 +9,7 @@
         VALUES
                 ('3251615', 'Стол кухонный', 'белый', 8000, 12),
                 ('3251616', 'Стол кухонный', NULL, 8000, 15),
-                ('3251617', 'Стул столовый "гусарский"', 'орех', 4000, 0),
+                ('3251617', 'Стул столовый "гусарский"', 'орех', 4000, 10),
                 ('3251619', 'Стул столовый с высокой спинкой', 'белый', 3500, 37),
                 ('3251620', 'Стул столовый с высокой спинкой', 'коричневый', 3500, 52);
 
@@ -38,7 +38,7 @@ ADD CONSTRAINT   date_null CHECK ((order_status = 'S' AND shipment_date IS NOT N
                 (5,'03.12.2020','Антонина Васильева','(931)777-66-55','antvas66@gmail.com',' пр. Науки, 11-3-9','P',NULL),
                 (6,'10.12.2020','Ирина Викторова','(911)009-88-77',NULL,'Тихорецкий пр. 21-21','P',NULL);
 
-CREATE TABLE  order_positions 
+CREATE TABLE  order_positions
                (order_cod INTEGER NOT NULL, 
                 product_article CHAR(7) NOT NULL, 
                 order_price INTEGER CHECK(order_price > 0) NOT NULL, 
@@ -58,100 +58,3 @@ CREATE TABLE  order_positions
                (5,'3251617',4000,4),
                (6,'3251617',4000,2);
 
-/*
-список заказов, созданных: в ноябре, в декабре;
-*/
-SELECT * FROM orders WHERE order_date BETWEEN '01.11.2020' AND '30.11.2020'; 
-SELECT * FROM orders WHERE order_date BETWEEN '01.12.2020' AND '31.12.2020';
-
-/*
-список заказов, отгруженных: в ноябре, в декабре;
-*/
-SELECT * FROM orders WHERE shipment_date BETWEEN '01.11.2020' AND '30.11.2020'; 
-SELECT * FROM orders WHERE shipment_date BETWEEN '01.12.2020' AND '31.12.2020';
-/*
-список клиентов: для каждого клиента должны быть выведены его ФИО, телефон и 
-адрес электронной почты;
-*/
-      SELECT  
-              сustomer_name AS "Ф.И.О.", 
-              сustomer_phone AS телефон, 
-              сustomer_email AS "адрес электронной почты" 
-        FROM  orders; 
-/*
-список позиций заказа с id=3;
-*/
-SELECT * FROM order_positions WHERE order_cod=3;
-/*
-названия товаров, включённых в заказ с id=3;
-*/
-      SELECT  
-              order_cod AS "Номер заказа", 
-              product_name AS "Название товара" 
-        FROM  products INNER JOIN order_positions ON order_cod=3 
-         AND  article=product_article;
-/*
-список отгруженных заказов, и количество позиций в каждом из них;
-*/
-      SELECT 
-              order_id AS "Номер заказа",
-              COUNT (order_cod) AS "Количество позиций", 
-              order_date AS "Дата заказа",
-              сustomer_name AS "Ф.И.О.",
-              сustomer_phone AS "Телефон",
-              сustomer_email AS "Электронная почта",
-              shipment_address AS "Адрес доставки",
-              order_status AS "Статус заказа",
-              shipment_date AS "Дата отгрузки заказа"   
-        FROM  orders INNER JOIN order_positions
-          ON  order_id=order_cod
-         AND  order_status='S'
-    GROUP BY  order_id, 
-              order_date, 
-              сustomer_name, 
-              сustomer_phone,
-              сustomer_email,
-              shipment_address,
-              order_status,
-              shipment_date;  
-/*
-доработайте запрос из предыдущего пункта, чтобы он дополнительно вычислял общую 
-стоимость заказа.
-*/   
-      SELECT 
-              order_id AS "Номер заказа",
-              COUNT (order_cod) AS "Количество позиций",
-              SUM (order_price * amount) AS "Общая стоимость заказа", 
-              order_date AS "Дата заказа",
-              сustomer_name AS "Ф.И.О.",
-              сustomer_phone AS "Телефон",
-              сustomer_email AS "Электронная почта",
-              shipment_address AS "Адрес доставки",
-              order_status AS "Статус заказа",
-              shipment_date AS "Дата отгрузки заказа"   
-        FROM  orders INNER JOIN order_positions
-          ON  order_id=order_cod 
-         AND  order_status='S'
-    GROUP BY  order_id, 
-              order_date, 
-              сustomer_name, 
-              сustomer_phone,
-              сustomer_email,
-              shipment_address,
-              order_status,
-              shipment_date;
-/*
-Напишите запрос, фиксирующий отгрузку заказа с id=5. Запрос должен:
-• менять статус заказа и фиксировать дату отгрузки;
-• уменьшать остаток товара на складе
-*/
--- чтобы отгрузить заказ с id=5, нужно чтобы на складе было нужное количество товара...добавляем
-      UPDATE  products
-         SET  product_in_stock = (product_in_stock + 10)
-       WHERE  article = '3251617';
---отгружаем 
-      UPDATE orders  SET order_status = 'S', shipment_date = '2020-12-24' WHERE order_id = 5;      
-      UPDATE products
-         SET product_in_stock = product_in_stock - (SELECT amount FROM order_positions 
-       WHERE order_cod = 5 AND product_article = article)
-       WHERE article IN (SELECT product_article FROM order_positions WHERE order_cod = 5);
